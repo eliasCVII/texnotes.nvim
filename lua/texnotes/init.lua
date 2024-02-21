@@ -5,7 +5,7 @@ local M = {}
 -- defaults go here
 M.config = {
 	path = "~/texnotes",
-	render_on_write = true,
+	compile_on_write = true,
 }
 
 local function call_render()
