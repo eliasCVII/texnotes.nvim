@@ -17,12 +17,12 @@ local render_on_save = function(filename)
 	})
 end
 
-M.render = function(render_on_write)
+M.render = function(compile_on_write)
 	vim.api.nvim_create_user_command("Render", function()
 		local buf = vim.api.nvim_get_current_buf()
 		local path = vim.api.nvim_buf_get_name(buf)
 		local filename = path:match(".+/([^/]+)$")
-		if render_on_write then
+		if compile_on_write then
 			render_on_save(filename)
 		else
 			render(filename)

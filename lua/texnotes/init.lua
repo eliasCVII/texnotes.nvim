@@ -26,7 +26,7 @@ M.setup = function(config)
 			local dir = M.config.path
 			if vim.loop.cwd() == expand(dir) then
 				note.make_note(dir)
-				watcher.render(M.config.render_on_write)
+				watcher.render(M.config.compile_on_write)
 				watcher.viewer(dir)
 				call_render()
 			end
