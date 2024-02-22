@@ -1,10 +1,19 @@
 local utils = require("texnotes.utils")
+local plenary = require("plenary")
 local M = {}
+
+local get_filename = function(path)
+	-- local pathsep = package.config:sub(1, 1)
+	-- path = path:gsub("[\\/]", pathsep)
+	-- return path:match(".+" .. pathsep .. "([^" .. pathsep .. "]+)$")
+	path = plenary.path:new(path):_split()
+	return path[#path]
+end
 
 local render = function(filename)
 	local file = filename:sub(1, -5)
-	print("rendering ...", filename)
-	vim.fn.jobstart({ "python", "manage.py", "render", file })
+	utils.notify("rendering ... " .. filename)
+	utils.manage("render", file)
 end
 
 local render_on_save = function(filename)
@@ -17,12 +26,12 @@ local render_on_save = function(filename)
 	})
 end
 
-M.render = function(compile_on_write)
+M.render = function(render_on_write)
 	vim.api.nvim_create_user_command("Render", function()
 		local buf = vim.api.nvim_get_current_buf()
 		local path = vim.api.nvim_buf_get_name(buf)
-		local filename = path:match(".+/([^/]+)$")
-		if compile_on_write then
+		local filename = get_filename(path)
+		if render_on_write then
 			render_on_save(filename)
 		else
 			render(filename)
@@ -34,8 +43,8 @@ M.viewer = function(dir)
 	vim.api.nvim_create_user_command("Viewer", function()
 		local buf = vim.api.nvim_get_current_buf()
 		local path = vim.api.nvim_buf_get_name(buf)
-		local name = path:match(".+/([^/]+)$"):sub(1, -5)
-		utils.open_file("pdf", name .. ".pdf", dir)
+		local filename = get_filename(path):sub(1, -5)
+		utils.open_file("pdf", filename .. ".pdf", dir)
 	end, {})
 end
 

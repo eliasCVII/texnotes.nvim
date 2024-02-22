@@ -1,12 +1,10 @@
 local Menu = require("nui.menu")
+local filetype = require("plenary.filetype")
+local utils = require("texnotes.utils")
 local NuiText = require("nui.text")
 
 local function remove_path(path) -- returns the filename only, i.e index.tex
 	return path:match(".+/([^/]+)$")
-end
-
-local function get_OS()
-	return package.config:sub(1, 1) == "\\" and "win" or "unix"
 end
 
 local function get_path(pattern, dir, get_file)
@@ -37,19 +35,6 @@ local function send_to_lines(separator, list, target, prefix)
 	end
 end
 
-local function open_file(filetype, name, dir)
-	local path = get_path(name, dir, true)
-	if filetype == "pdf" then
-		if get_OS() == "unix" then
-			vim.fn.jobstart({ "handlr", "open", path[1] })
-		elseif get_OS() == "win" then
-			vim.fn.system("start " .. path[1])
-		end
-	elseif filetype == "tex" then
-		vim.cmd("e " .. path[1])
-	end
-end
-
 local M = {}
 
 M.open_menu = function(dir)
@@ -71,7 +56,7 @@ M.open_menu = function(dir)
 		position = "50%",
 		size = {
 			width = 50,
-			height = 10,
+			height = 15,
 		},
 		border = {
 			style = "rounded",
@@ -93,14 +78,10 @@ M.open_menu = function(dir)
 			focus_next = { "j", "<Down>", "<Tab>" },
 			focus_prev = { "k", "<Up>", "<S-Tab>" },
 			close = { "<Esc>", "<C-c>", "q" },
-			submit = { "<CR>", "<Space>" },
+			submit = { "<CR>", "<Space>", "L" },
 		},
-		on_close = function()
-			print("Closing Menu!")
-		end,
 		on_submit = function(item)
-			local filetype = item.text:sub(-3)
-			open_file(filetype, item.text:sub(5), dir)
+			utils.open_file(filetype.detect(item.text), item.text:sub(5), dir)
 		end,
 	})
 

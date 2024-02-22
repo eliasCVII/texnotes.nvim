@@ -22,9 +22,12 @@ M.setup = function(config)
 
 	local expand = vim.fn.expand
 	vim.api.nvim_create_autocmd("BufEnter", {
+		pattern = "*",
+		group = vim.api.nvim_create_augroup("cleanup", { clear = true }),
 		callback = function()
 			local dir = M.config.path
-			if vim.loop.cwd() == expand(dir) then
+			local cwd = vim.loop.cwd()
+			if cwd == expand(dir) then
 				note.make_note(dir)
 				watcher.render(M.config.compile_on_write)
 				watcher.viewer(dir)

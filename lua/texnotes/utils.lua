@@ -1,3 +1,6 @@
+local plenary = require("plenary")
+local job = plenary.job
+
 local M = {}
 
 local function uppercase(str)
@@ -9,7 +12,8 @@ local function lowercase(str)
 end
 
 local function remove_path(path) -- returns the filename only, i.e index.tex
-	return path:match(".+/([^/]+)$")
+	path = plenary.path:new(path):_split()
+	return path[#path]
 end
 
 local function get_OS()
@@ -31,19 +35,6 @@ local function get_path(pattern, dir, get_file) -- returns table with lists of f
 	return files
 end
 
-M.open_file = function(filetype, name, dir)
-	local path = get_path(name, dir, true)
-	if filetype == "pdf" then
-		if get_OS() == "unix" then
-			vim.fn.jobstart({ "handlr", "open", path[1] })
-		elseif get_OS() == "win" then
-			vim.fn.system("start " .. path[1])
-		end
-	elseif filetype == "tex" then
-		vim.cmd("e " .. path[1])
-	end
-end
-
 local function get_references(filepath)
 	local file = io.open(vim.fn.expand(filepath), "r")
 	local lines = {}
@@ -61,8 +52,51 @@ local function get_references(filepath)
 	return lines
 end
 
-local function manage(command, par_one, par_two) -- control manage.py
-	vim.fn.jobstart({ "python", "manage.py", command, par_one, par_two })
+M.job = function(command, arg1, arg2)
+	local args = { arg1 }
+	if arg2 and arg2 ~= "" then
+		table.insert(args, arg2)
+	end
+	local Job_spec = {
+		command = command,
+		args = args,
+	}
+	job:new(Job_spec):start()
+end
+
+M.notify = function(message)
+	vim.notify(message, vim.log.levels.INFO, { title = "Note" })
+end
+
+M.manage = function(command, arg1, arg2, wait)
+	local args = { "manage.py", command, arg1 }
+	if arg2 and arg2 ~= "" then
+		table.insert(args, arg2)
+	end
+
+	local Job_spec = {
+		command = "python",
+		args = args,
+	}
+
+	if wait then
+		job:new(Job_spec):sync()
+	else
+		job:new(Job_spec):start()
+	end
+end
+
+M.open_file = function(filetype, name, dir)
+	local path = get_path(name, dir, true)
+	if filetype == "pdf" then
+		if get_OS() == "unix" then
+			M.job("handlr", "open", path[1])
+		elseif get_OS() == "win" then
+			M.job("start", path[1])
+		end
+	elseif filetype == "tex" then
+		vim.cmd("e " .. path[1])
+	end
 end
 
 M.edit_note = function(dir) -- NOTE: unused
@@ -70,7 +104,6 @@ M.edit_note = function(dir) -- NOTE: unused
 	vim.ui.select(tex, { prompt = "choose note to edit" }, function(choice)
 		if choice ~= nil then
 			local name = choice
-			-- local name = remove_path(choice)
 			local path = dir .. "/notes/slipbox/"
 			M.open_file(name, path)
 		end
@@ -83,11 +116,9 @@ M.render_note = function(dir) -- render a specific note
 	vim.ui.select(tex, { prompt = "choose note to render" }, function(choice)
 		if choice ~= nil then
 			local name = choice:sub(1, -5)
-			print("rendering", name)
-			manage("render", name)
-			vim.defer_fn(function()
-				M.open_file("pdf", name .. ".pdf", dir)
-			end, 500)
+			M.notify("rendering " .. name)
+			M.manage("render", name, "", true)
+			M.open_file("pdf", name .. ".pdf", dir)
 		end
 		return choice
 	end)
@@ -119,13 +150,11 @@ end
 M.new_note = function(dir)
 	vim.ui.input({ prompt = "new note: " }, function(input)
 		if input then
-			input = lowercase(input) -- replace " " with "_"
-			print("creating", input .. ".tex")
-			manage("newnote", input)
+			input = lowercase(input)
+			M.notify("creating " .. input .. ".tex")
+			M.manage("newnote", input, "", true)
 			input = input .. ".tex"
-			vim.defer_fn(function()
-				M.open_file("tex", input, dir)
-			end, 200)
+			M.open_file("tex", input, dir)
 		end
 	end)
 end
@@ -133,14 +162,12 @@ end
 M.new_project = function(dir)
 	vim.ui.input({ prompt = "new project: " }, function(input)
 		if input then
-			input = lowercase(input) -- replace " " with "_"
-			print("creating", input)
-			manage("newproject", input)
+			input = lowercase(input)
+			M.notify("creating " .. input)
+			M.manage("newproject", input, "", true)
 			local filename = input .. ".tex"
 			input = input .. "/"
-			vim.defer_fn(function()
-				M.open_file("tex", filename, dir .. input)
-			end, 200)
+			M.open_file("tex", filename, dir .. input)
 		end
 	end)
 end
@@ -150,22 +177,8 @@ M.view_note = function(dir) -- NOTE: unused
 	vim.ui.select(pdfs, { prompt = "choose compiled note to view" }, function(choice)
 		if choice then
 			local name = remove_path(choice)
-			print("opening", name)
+			M.notify("opening " .. name)
 			vim.fn.jobstart({ "handlr", "open", choice })
-		end
-		return choice
-	end)
-end
-
-M.rename_note = function(dir)
-	local tex = get_path("tex", dir .. "/notes/slipbox")
-	vim.ui.select(tex, { prompt = "choose a note to rename" }, function(choice)
-		if choice then
-			local rename = vim.fn.input("rename: ")
-			local name = choice:sub(1, -5)
-			print("renaming", name .. " to " .. rename)
-			rename = lowercase(rename)
-			manage("rename_file", name, rename)
 		end
 		return choice
 	end)
@@ -177,21 +190,48 @@ M.rename_reference = function(dir)
 	vim.ui.select(refs, { prompt = "choose a reference to rename" }, function(choice)
 		if choice then
 			-- local name = uppercase(choice)
-			print("renaming", choice)
+			M.notify("renaming " .. choice)
 			vim.ui.input({ prompt = "rename: " }, function(input)
 				input = uppercase(input)
-				manage("rename_reference", choice, input)
+				M.manage("rename_reference", choice, input)
 			end)
 		end
 		return choice
 	end)
 end
 
+M.rename_note = function(dir)
+	local tex = get_path("tex", dir .. "/notes/slipbox")
+	local refs = plenary.path:new("notes/documents.tex"):readlines()
+
+	vim.ui.select(tex, { prompt = "choose a note to rename" }, function(choice)
+		if choice then
+			local rename = vim.fn.input("rename: ")
+			local name = choice:sub(1, -5)
+			rename = lowercase(rename)
+
+			for _, str in ipairs(refs) do
+				local startIdx, endIdx = str:find("{.*}")
+				if startIdx and endIdx then
+					local innerStr = str:sub(startIdx + 1, endIdx - 1)
+					if innerStr == name then
+						local reference = str:match("%[(.-)%]"):gsub("-", "")
+						M.manage("rename_reference", reference, uppercase(rename))
+						break
+					end
+				end
+			end
+
+			M.notify("renaming " .. name .. " to " .. rename)
+			M.manage("rename_file", name, rename)
+		end
+		return choice
+	end)
+end
+
 M.open_graph = function()
-	manage("synchronize", "")
-	vim.defer_fn(function()
-		vim.fn.jobstart({ "python", "network.py" })
-	end, 250)
+	M.manage("synchronize", "", "", true)
+	vim.fn.jobstart({ "python", "network.py" })
 end
 
 return M
