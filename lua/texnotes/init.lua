@@ -428,8 +428,7 @@ H.open_file = function(filetype, name, dir)
       return
     elseif H.get_OS() == "win" then
       -- H.job("start", path[1]) FIX: This doesnt work on windows, use vim.fn.system for now
-      -- vim.fn.system("start " .. path[1])
-      vim.fn.jobstart({ "start", path[1] })
+      vim.fn.system("start " .. path[1])
     end
   elseif filetype == "tex" then
     vim.cmd.edit(path[1])
