@@ -42,7 +42,8 @@ end
 
 local function process_tex_files_async(folder_path)
 	local files = {}
-	for file in io.popen("find " .. folder_path .. ' -name "*.tex"'):lines() do
+  for file in io.popen("fd .tex " .. folder_path):lines() do
+	-- for file in io.popen("find " .. folder_path .. ' -name "*.tex"'):lines() do
 		table.insert(files, file)
 	end
 

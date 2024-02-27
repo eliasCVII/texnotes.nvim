@@ -60,7 +60,7 @@ end
 texnotes.render_note = function(dir)
   local tex = H.get_path("tex", dir .. "/notes/slipbox", false, true)
 
-  MiniPick.start({
+  pick.start({
     mappings = H.menu_mappings(),
     source = {
       items = tex,
@@ -125,7 +125,7 @@ end
 texnotes.rename_reference = function(dir)
   local refs = texnotes.get_references(dir .. "/notes/documents.tex")
 
-  MiniPick.start({
+  pick.start({
     mappings = H.menu_mappings(),
     source = {
       items = refs,
@@ -216,7 +216,7 @@ texnotes.file_menu = function(dir)
   add_items(items, projects, " ")
   add_items(items, pdfs, " ")
 
-  MiniPick.start({
+  pick.start({
     mappings = H.menu_mappings({
       rename = {
         char = "<C-r>",
@@ -551,9 +551,11 @@ H.create_autocommands = function(config)
     H.create_user_commands(config)
   end, "Setup on default path only")
 
-  au({ "BufEnter" }, "*.tex", function()
-    vim.cmd("Render")
-  end, "Start auto compiling")
+  if config.compile_on_write == true then
+    au({ "BufEnter" }, "*.tex", function()
+      vim.cmd("Render")
+    end, "Start auto compiling")
+  end
 end
 
 return texnotes
