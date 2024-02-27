@@ -53,7 +53,7 @@ return function(_, params, callback)
 	local notes_path = require("cmp-texnotes.options").validate(params).notes
 
 	local file = io.open(vim.fn.expand(path), "r")
-	local note_data = parse_notes.get_labels(notes_path)
+	local note_data = parse_notes.get_labels(vim.fn.expand(notes_path))
 
 	if not file and not note_data then
 		return

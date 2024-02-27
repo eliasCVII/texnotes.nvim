@@ -9,7 +9,7 @@ end
 source.complete = require("cmp-texnotes.complete")
 
 source.get_trigger_characters = function()
-	return { "{" }
+	return { "{", "[" }
 end
 
 source.get_keyword_pattern = function()
